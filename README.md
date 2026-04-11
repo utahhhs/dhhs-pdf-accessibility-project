@@ -116,7 +116,6 @@ After successful deployment, the script provides specific testing instructions f
 2. **Upload Your PDF Files**
 
    - Upload any PDF file(s) to the `pdf/` folder
-   - **Note**: The `pdf/` folder is automatically created when you upload files - no manual folder creation needed
    - **Bulk Processing**: You can upload multiple PDFs in the bucket for batch remediation
    - The process automatically triggers when files are uploaded
 
