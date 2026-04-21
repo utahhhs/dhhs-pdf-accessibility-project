@@ -37,10 +37,12 @@ public class App implements RequestHandler<Map<String, Object>, String> {
     @Override
     @SuppressWarnings("unchecked")
     public String handleRequest(Map<String, Object> input, Context context) {
-        String bucketName = System.getenv("BUCKET_NAME"); // Replace with your S3 bucket name
+        // String bucketName = System.getenv("BUCKET_NAME"); // Replace with your S3 bucket name
 
         // Extract the list of file names from the input
         List<String> pdfKeys = (List<String>) input.get("fileNames");
+        String bucketName = (String) input.get("bucketName");
+        System.out.println("Received bucket name: " + bucketName);
         if (pdfKeys == null || pdfKeys.isEmpty()) {
             return "No files to merge.";
         }

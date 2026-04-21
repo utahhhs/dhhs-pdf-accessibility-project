@@ -23,14 +23,14 @@ import datetime
 class PDFAccessibility(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        
+
         # S3 Bucket
         pdf_processing_bucket = s3.Bucket(self, "pdfaccessibilitybucket1", 
                           encryption=s3.BucketEncryption.S3_MANAGED, 
                           enforce_ssl=True,
                           versioned=True,
                           removal_policy=cdk.RemovalPolicy.RETAIN)
-        
+
         # Get account and region for use throughout the stack
         account_id = Stack.of(self).account
         region = Stack.of(self).region
@@ -99,13 +99,13 @@ class PDFAccessibility(Stack):
                 iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AmazonECSTaskExecutionRolePolicy"),
             ]
         )
-        
+
         # Bedrock permissions for alt-text generation models
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=["bedrock:InvokeModel"],
             resources=["*"],
         ))
-        
+
         # S3 permissions - scoped to the processing bucket only
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=[
@@ -118,13 +118,13 @@ class PDFAccessibility(Stack):
                 f"{pdf_processing_bucket.bucket_arn}/*",
             ],
         ))
-        
+
         # Comprehend permissions for language detection (no resource-level permissions supported)
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=["comprehend:DetectDominantLanguage"],
             resources=["*"],  # Comprehend DetectDominantLanguage does not support resource-level permissions
         ))
-        
+
         # Secrets Manager permissions - scoped to Adobe API credentials
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=["secretsmanager:GetSecretValue"],
@@ -249,20 +249,23 @@ class PDFAccessibility(Stack):
             runtime=lambda_.Runtime.JAVA_21,
             handler='com.example.App::handleRequest',
             code=lambda_.Code.from_asset('lambda/pdf-merger-lambda/PDFMergerLambda/target/PDFMergerLambda-1.0-SNAPSHOT.jar'),
-            environment={
-                'BUCKET_NAME': pdf_processing_bucket.bucket_name  # this line sets the environment variable
-            },
+            # environment={
+            #     'BUCKET_NAME': pdf_processing_bucket.bucket_name  # this line sets the environment variable
+            # },
             timeout=Duration.seconds(900),
             memory_size=1024
         )
 
         pdf_merger_lambda.add_to_role_policy(cloudwatch_metrics_policy)
-        pdf_merger_lambda_task = tasks.LambdaInvoke(self, "MergePdfChunks",
-                                      lambda_function=pdf_merger_lambda,
-                                      payload=sfn.TaskInput.from_object({
-        "fileNames.$": "$.chunks[*].s3_key"
-                     }),
-                                      output_path=sfn.JsonPath.string_at("$.Payload"))
+        pdf_merger_lambda_task = tasks.LambdaInvoke(
+            self,
+            "MergePdfChunks",
+            lambda_function=pdf_merger_lambda,
+            payload=sfn.TaskInput.from_object(
+                {"fileNames.$": "$.chunks[*].s3_key", "bucketName.$": "$.s3_bucket"}
+            ),
+            output_path=sfn.JsonPath.string_at("$.Payload"),
+        )
         pdf_processing_bucket.grant_read_write(pdf_merger_lambda)
 
         # Define the Add Title Lambda function
@@ -298,7 +301,7 @@ class PDFAccessibility(Stack):
 
         # Add the necessary policy to the Lambda function's role
         title_generator_lambda.add_to_role_policy(cloudwatch_metrics_policy)
-        
+
         # Bedrock permissions for title generation models
         title_generator_lambda.add_to_role_policy(iam.PolicyStatement(
             actions=["bedrock:InvokeModel"],
@@ -307,7 +310,7 @@ class PDFAccessibility(Stack):
 
         # Chain the tasks in the state machine
         # chain = pdf_chunks_map_state.next(pdf_merger_lambda_task).next(title_generator_lambda_task)
-        
+
         pre_remediation_accessibility_checker = lambda_.Function(
             self,'PreRemediationAccessibilityAuditor',
             runtime=lambda_.Runtime.PYTHON_3_12,
@@ -317,7 +320,7 @@ class PDFAccessibility(Stack):
             memory_size=512,
             architecture=lambda_arch,
         )
-        
+
         pre_remediation_accessibility_checker.add_to_role_policy(
             iam.PolicyStatement(
             actions=["secretsmanager:GetSecretValue"],
@@ -343,7 +346,7 @@ class PDFAccessibility(Stack):
             memory_size=512,
             architecture=lambda_arch,
         )
-        
+
         post_remediation_accessibility_checker.add_to_role_policy(
             iam.PolicyStatement(
             actions=["secretsmanager:GetSecretValue"],
@@ -359,7 +362,7 @@ class PDFAccessibility(Stack):
             payload=sfn.TaskInput.from_json_path_at("$"),
             output_path="$.Payload"
         )
-        
+
         remediation_chain = pdf_chunks_map_state.next(pdf_merger_lambda_task).next(title_generator_lambda_task).next(post_remediation_accessibility_checker_task)
 
         parallel_accessibility_workflow = sfn.Parallel(self, "ParallelAccessibilityWorkflow",
@@ -381,7 +384,7 @@ class PDFAccessibility(Stack):
                                              destination=pdf_remediation_workflow_log_group,
                                              level=sfn.LogLevel.ALL
                                          ))
-        
+
         # Lambda Function
         pdf_splitter_lambda = lambda_.Function(
             self, 'PdfChunkSplitterLambda',
@@ -416,8 +419,6 @@ class PDFAccessibility(Stack):
         title_generator_lambda_log_group_name = f"/aws/lambda/{title_generator_lambda.function_name}"
         pre_remediation_checker_log_group_name = f"/aws/lambda/{pre_remediation_accessibility_checker.function_name}"
         post_remediation_checker_log_group_name = f"aws/lambda/{post_remediation_accessibility_checker.function_name}"
-
-
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         dashboard_name = f"PDF_Processing_Dashboard-{timestamp}"
