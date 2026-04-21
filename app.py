@@ -200,6 +200,7 @@ class PDFAccessibility(Stack):
                                           platform_version=ecs.FargatePlatformVersion.LATEST
                                       ),
                                       propagated_tag_source=ecs.PropagatedTagSource.TASK_DEFINITION,
+                                      result_path="$.autotagResult"
                                      )
 
         alt_text_generation_task = tasks.EcsRunTask(self, "RunAltTextGenerationTask",
@@ -213,11 +214,11 @@ class PDFAccessibility(Stack):
                                           environment=[
                                               tasks.TaskEnvironmentVariable(
                                                   name="S3_BUCKET_NAME",
-                                                  value=sfn.JsonPath.string_at("$.Overrides.ContainerOverrides[0].Environment[0].Value")
+                                                  value=sfn.JsonPath.string_at("$.s3_bucket")
                                               ),
                                               tasks.TaskEnvironmentVariable(
                                                   name="S3_FILE_KEY",
-                                                  value=sfn.JsonPath.string_at("$.Overrides.ContainerOverrides[0].Environment[1].Value")
+                                                  value=sfn.JsonPath.string_at("$.s3_key")
                                               ),
                                               tasks.TaskEnvironmentVariable(
                                                   name="AWS_REGION",
