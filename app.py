@@ -262,7 +262,11 @@ class PDFAccessibility(Stack):
             "MergePdfChunks",
             lambda_function=pdf_merger_lambda,
             payload=sfn.TaskInput.from_object(
-                {"fileNames.$": "$.chunks[*].s3_key", "bucketName.$": "$.s3_bucket"}
+                {
+                 "fileNames.$": "$.chunks[*].s3_key", 
+                 "bucketName.$": sfn.JsonPath.string_at("$.s3_bucket"),
+                 "S3_BUCKET_NAME.$": "$.s3_bucket",
+                 }
             ),
             output_path=sfn.JsonPath.string_at("$.Payload"),
         )
