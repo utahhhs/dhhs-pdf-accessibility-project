@@ -38,9 +38,15 @@ public class App implements RequestHandler<Map<String, Object>, String> {
     @SuppressWarnings("unchecked")
     public String handleRequest(Map<String, Object> input, Context context) {
         // String bucketName = System.getenv("BUCKET_NAME"); // Replace with your S3 bucket name
-
+        // Print the input object to the console for debugging
+        input.forEach((key, value) -> {
+            System.out.println("Key: " + key + ", Value: " + value);
+        });
         // Extract the list of file names from the input
         List<String> pdfKeys = (List<String>) input.get("fileNames");
+        // Print pdfKeys to the console for debugging
+        pdfKeys.forEach(key -> System.out.println("PDF Key: " + key));
+        
         String bucketName = (String) input.get("bucketName");
         System.out.println("Received bucket name: " + bucketName);
         if (pdfKeys == null || pdfKeys.isEmpty()) {
