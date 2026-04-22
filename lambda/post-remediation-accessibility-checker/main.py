@@ -30,8 +30,8 @@ def save_to_s3(bucket_name, file_key):
 
     file_key_without_extension = os.path.splitext(file_key)[0]
     file_key_without_compliant = file_key_without_extension.replace("COMPLIANT_", "", 1)
-    
-    bucket_save_path = f"temp/{file_key_without_compliant}/accessibility-report/{file_key_without_extension}_accessibility_report_after_remidiation.json"
+    # bucket_save_path = f"temp/{file_key_without_compliant}/accessibility-report/{file_key_without_extension}_accessibility_report_after_remidiation.json"
+    bucket_save_path = f"result/{file_key_without_extension}_accessibility_report_after_remidiation.json"
     with open(local_path, "rb") as data:
         s3.upload_fileobj(data, bucket_name, bucket_save_path)
     print(f"Filename {file_key} | Uploaded {file_key} to {bucket_name} at path {bucket_save_path} after remidiation")
